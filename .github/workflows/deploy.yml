@@ -1,4 +1,4 @@
-name: Deploy to Server
+name: Deploy EuphoriaBot to Server
 
 on:
   push:
@@ -12,15 +12,16 @@ jobs:
     - name: Deploy to server
       uses: appleboy/ssh-action@v0.1.5
       with:
-        host: 5.129.250.86
+        host: 194.87.131.97
         username: root
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
-          cd /opt/tusabot
+          cd /opt/euphoriabot
           git pull origin main
-          pkill -f bot.py || true
-          pkill -f api.py || true
-          pip3 install -r requirements.txt
-          python3 bot.py &
-          python3 api.py &
-          echo "✅ Деплой завершен!"
+          systemctl restart euphoriabot
+          systemctl restart euphoriabot-api
+          cd project
+          npm install
+          npm run build
+          systemctl restart nginx
+          echo "✅ EuphoriaBot деплой завершен!"

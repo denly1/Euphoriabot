@@ -16,7 +16,7 @@ class Database:
             cls._pool = await asyncpg.create_pool(
                 host=os.getenv("DB_HOST", "localhost"),
                 port=int(os.getenv("DB_PORT", "5432")),
-                database=os.getenv("DB_NAME", "FamilyDB"),
+                database=os.getenv("DB_NAME", "EuphoriaDB"),
                 user=os.getenv("DB_USER", "postgres"),
                 password=os.getenv("DB_PASSWORD", "1")
             )
