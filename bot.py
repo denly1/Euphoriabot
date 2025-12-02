@@ -94,6 +94,7 @@ if ADMIN_IDS_STR:
         admin_id = admin_id.strip()
         if admin_id.isdigit():
             ADMIN_IDS.add(int(admin_id))
+logger.info("Loaded ADMIN_IDS from .env: %s (raw: %s)", ADMIN_IDS, ADMIN_IDS_STR)
 CHANNEL_USERNAME = os.getenv("CHANNEL_USERNAME", "@mediafamm")
 CHANNEL_USERNAME_2 = os.getenv("CHANNEL_USERNAME_2", "@thefamilymsk")
 CHAT_USERNAME = os.getenv("CHAT_USERNAME", "@familyychaat")
