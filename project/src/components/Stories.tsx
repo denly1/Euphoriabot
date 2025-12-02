@@ -16,7 +16,7 @@ const stories: Story[] = [
   {
     id: 1,
     title: 'Работа в проекте',
-    avatar: '/Кружок1.jpg',
+    avatar: '💼',
     image: '/ФонВкружок1.jpg',
     content: {
       subtitle: undefined,
@@ -26,7 +26,7 @@ const stories: Story[] = [
   {
     id: 2,
     title: 'О НАС',
-    avatar: '/Кружок2.jpg',
+    avatar: '👥',
     content: {
       subtitle: 'THE FAMILY',
       items: [
@@ -40,7 +40,7 @@ const stories: Story[] = [
   {
     id: 3,
     title: 'МЕДИА STAFF',
-    avatar: '/Кружок3.jpg',
+    avatar: '📸',
     content: {
       subtitle: 'Медиа-staff',
       items: [
@@ -163,13 +163,8 @@ export default function Stories() {
             className="flex flex-col items-center gap-2 cursor-pointer flex-shrink-0"
           >
             <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-cyan-500 to-fuchsia-500 p-1 flex items-center justify-center">
-              <div className="w-full h-full rounded-full overflow-hidden border-2 border-black/40">
-                <img
-                  src={story.avatar}
-                  alt={story.title}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
+              <div className="w-full h-full rounded-full bg-gradient-to-br from-[#0b1220] via-[#1a1640] to-[#2b0f4f] border-2 border-black/40 flex items-center justify-center">
+                <span className="text-4xl">{story.avatar}</span>
               </div>
             </div>
             <span className="text-xs text-white font-medium">{story.title}</span>
