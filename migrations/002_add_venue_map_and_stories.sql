@@ -10,14 +10,14 @@ CREATE TABLE IF NOT EXISTS stories (
     id SERIAL PRIMARY KEY,
     file_id TEXT NOT NULL,
     caption TEXT,
-    story_order INTEGER DEFAULT 0,
+    order_num INTEGER DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT now(),
     is_active BOOLEAN DEFAULT true
 );
 
 -- Индексы для stories
 CREATE INDEX IF NOT EXISTS idx_stories_is_active ON stories(is_active);
-CREATE INDEX IF NOT EXISTS idx_stories_order ON stories(story_order);
+CREATE INDEX IF NOT EXISTS idx_stories_order_num ON stories(order_num);
 
 -- Комментарии
 COMMENT ON COLUMN posters.venue_map_file_id IS 'Telegram file_id фото схемы зала';

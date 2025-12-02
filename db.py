@@ -491,16 +491,16 @@ async def get_attendance_stats(pool: asyncpg.Pool, poster_id: int) -> dict:
 # Stories Functions
 # ----------------------
 
-async def create_story(pool: asyncpg.Pool, file_id: str, caption: Optional[str] = None, story_order: int = 0) -> int:
+async def create_story(pool: asyncpg.Pool, file_id: str, caption: Optional[str] = None, order_num: int = 0) -> int:
     """Создать новую Story"""
     async with pool.acquire() as conn:
         story_id = await conn.fetchval(
             """
-            INSERT INTO stories (file_id, caption, story_order, is_active)
+            INSERT INTO stories (file_id, caption, order_num, is_active)
             VALUES ($1, $2, $3, true)
             RETURNING id
             """,
-            file_id, caption, story_order
+            file_id, caption, order_num
         )
         return story_id
 
@@ -510,10 +510,10 @@ async def get_active_stories(pool: asyncpg.Pool):
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             """
-            SELECT id, file_id, caption, story_order, created_at
+            SELECT id, file_id, caption, order_num, created_at
             FROM stories
             WHERE is_active = true
-            ORDER BY story_order ASC, created_at DESC
+            ORDER BY order_num ASC, created_at DESC
             """
         )
         return [dict(row) for row in rows]
@@ -529,7 +529,7 @@ async def update_story_order(pool: asyncpg.Pool, story_id: int, new_order: int) 
     """Обновить порядок Story"""
     async with pool.acquire() as conn:
         await conn.execute(
-            "UPDATE stories SET story_order = $2 WHERE id = $1",
+            "UPDATE stories SET order_num = $2 WHERE id = $1",
             story_id, new_order
         )
 
