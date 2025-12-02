@@ -1,6 +1,29 @@
 import { useEffect, useState } from 'react';
 import Stories from './components/Stories';
+import AdminPanel from './components/AdminPanel';
 import { getPosters, Poster } from './lib/api';
+import { Settings } from 'lucide-react';
+
+// Декларация Telegram WebApp
+declare global {
+  interface Window {
+    Telegram?: {
+      WebApp: {
+        initData: string;
+        initDataUnsafe: {
+          user?: {
+            id: number;
+            first_name: string;
+            last_name?: string;
+            username?: string;
+          };
+        };
+        ready: () => void;
+        expand: () => void;
+      };
+    };
+  }
+}
 
 function App() {
   const [posters, setPosters] = useState<Poster[]>([]);
@@ -9,8 +32,24 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [userId, setUserId] = useState<number | null>(null);
 
   useEffect(() => {
+    // Инициализация Telegram WebApp
+    if (window.Telegram?.WebApp) {
+      const tg = window.Telegram.WebApp;
+      tg.ready();
+      tg.expand();
+      
+      // Получаем user_id из Telegram
+      const user = tg.initDataUnsafe.user;
+      if (user) {
+        setUserId(user.id);
+        console.log('Telegram User ID:', user.id);
+      }
+    }
+    
     fetchPosters();
   }, []);
 
@@ -88,6 +127,17 @@ function App() {
         </div>
 
         <div className="relative z-10 pb-24">
+          {/* Кнопка админ-панели */}
+          {userId && (
+            <button
+              onClick={() => setShowAdminPanel(true)}
+              className="fixed top-4 right-4 z-50 p-3 bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 rounded-full shadow-lg transition-all"
+              title="Админ-панель"
+            >
+              <Settings className="w-6 h-6" />
+            </button>
+          )}
+          
           <Stories />
 
           {loading ? (
@@ -208,6 +258,11 @@ function App() {
           </div>
         )}
       </main>
+      
+      {/* Админ-панель */}
+      {showAdminPanel && userId && (
+        <AdminPanel userId={userId} onClose={() => setShowAdminPanel(false)} />
+      )}
     </div>
   );
 }

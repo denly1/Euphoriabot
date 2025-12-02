@@ -28,8 +28,17 @@ DB_PASSWORD = os.getenv("DB_PASSWORD", "1")
 # Telegram Bot Token для получения файлов
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 
+# Список ID админов
+ADMIN_IDS = set(map(int, os.getenv("ADMIN_IDS", "825042510,8160172817").split(",")))
+
 # Глобальный пул соединений
 db_pool: Optional[asyncpg.Pool] = None
+
+
+# Функция проверки админа
+def is_admin(user_id: int) -> bool:
+    """Проверяет, является ли пользователь админом"""
+    return user_id in ADMIN_IDS
 
 
 # Модели данных
@@ -50,6 +59,20 @@ class PosterForWeb(BaseModel):
     ticket_url: Optional[str]
     image_url: str  # URL для получения изображения через Telegram Bot API
     created_at: str
+
+
+class StoryCreate(BaseModel):
+    """Модель для создания Story"""
+    file_id: str
+    caption: Optional[str] = None
+    order_num: int = 0
+
+
+class StoryUpdate(BaseModel):
+    """Модель для обновления Story"""
+    caption: Optional[str] = None
+    order_num: Optional[int] = None
+    is_active: Optional[bool] = None
 
 
 # Lifespan context manager для управления пулом БД
@@ -389,6 +412,134 @@ async def get_stories():
     except Exception as e:
         logger.error(f"Failed to fetch stories: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/stories")
+async def create_story(story: StoryCreate, user_id: int):
+    """Создать новую Story (только для админов)"""
+    if not is_admin(user_id):
+        raise HTTPException(status_code=403, detail="Access denied. Admins only.")
+    
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    try:
+        async with db_pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                INSERT INTO stories (file_id, caption, order_num, is_active)
+                VALUES ($1, $2, $3, true)
+                RETURNING id, file_id, caption, order_num, created_at, is_active
+                """,
+                story.file_id, story.caption, story.order_num
+            )
+            
+            return {
+                "id": row['id'],
+                "file_id": row['file_id'],
+                "caption": row['caption'],
+                "order_num": row['order_num'],
+                "created_at": row['created_at'].isoformat(),
+                "is_active": row['is_active']
+            }
+    except Exception as e:
+        logger.error(f"Failed to create story: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/stories/{story_id}")
+async def update_story(story_id: int, story: StoryUpdate, user_id: int):
+    """Обновить Story (только для админов)"""
+    if not is_admin(user_id):
+        raise HTTPException(status_code=403, detail="Access denied. Admins only.")
+    
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    try:
+        async with db_pool.acquire() as conn:
+            # Формируем SQL динамически в зависимости от того, что обновляется
+            updates = []
+            values = []
+            param_num = 1
+            
+            if story.caption is not None:
+                updates.append(f"caption = ${param_num}")
+                values.append(story.caption)
+                param_num += 1
+            
+            if story.order_num is not None:
+                updates.append(f"order_num = ${param_num}")
+                values.append(story.order_num)
+                param_num += 1
+            
+            if story.is_active is not None:
+                updates.append(f"is_active = ${param_num}")
+                values.append(story.is_active)
+                param_num += 1
+            
+            if not updates:
+                raise HTTPException(status_code=400, detail="No fields to update")
+            
+            values.append(story_id)
+            sql = f"""
+                UPDATE stories
+                SET {', '.join(updates)}
+                WHERE id = ${param_num}
+                RETURNING id, file_id, caption, order_num, created_at, is_active
+            """
+            
+            row = await conn.fetchrow(sql, *values)
+            
+            if not row:
+                raise HTTPException(status_code=404, detail="Story not found")
+            
+            return {
+                "id": row['id'],
+                "file_id": row['file_id'],
+                "caption": row['caption'],
+                "order_num": row['order_num'],
+                "created_at": row['created_at'].isoformat(),
+                "is_active": row['is_active']
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update story {story_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/stories/{story_id}")
+async def delete_story(story_id: int, user_id: int):
+    """Удалить Story (только для админов)"""
+    if not is_admin(user_id):
+        raise HTTPException(status_code=403, detail="Access denied. Admins only.")
+    
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    try:
+        async with db_pool.acquire() as conn:
+            result = await conn.execute(
+                "DELETE FROM stories WHERE id = $1",
+                story_id
+            )
+            
+            if result == "DELETE 0":
+                raise HTTPException(status_code=404, detail="Story not found")
+            
+            return {"message": "Story deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete story {story_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/check-admin/{user_id}")
+async def check_admin(user_id: int):
+    """Проверить, является ли пользователь админом"""
+    return {"is_admin": is_admin(user_id)}
 
 
 if __name__ == "__main__":
