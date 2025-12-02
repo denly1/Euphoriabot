@@ -86,12 +86,14 @@ def _get_env(key: str, default: str = "") -> str:
 
 
 BOT_TOKEN = _get_env("BOT_TOKEN", "")
-ADMIN_USER_ID_STR = _get_env("ADMIN_USER_ID", "")
-ADMIN_USER_ID = int(ADMIN_USER_ID_STR) if ADMIN_USER_ID_STR.isdigit() else 0
-ADMIN_USER_ID_2_STR = _get_env("ADMIN_USER_ID_2", "")
-ADMIN_USER_ID_2 = int(ADMIN_USER_ID_2_STR) if ADMIN_USER_ID_2_STR.isdigit() else 0
-ADMIN_USER_ID_3_STR = _get_env("ADMIN_USER_ID_3", "")
-ADMIN_USER_ID_3 = int(ADMIN_USER_ID_3_STR) if ADMIN_USER_ID_3_STR.isdigit() else 0
+# Parse ADMIN_IDS from comma-separated string
+ADMIN_IDS_STR = _get_env("ADMIN_IDS", "")
+ADMIN_IDS = set()
+if ADMIN_IDS_STR:
+    for admin_id in ADMIN_IDS_STR.split(","):
+        admin_id = admin_id.strip()
+        if admin_id.isdigit():
+            ADMIN_IDS.add(int(admin_id))
 CHANNEL_USERNAME = os.getenv("CHANNEL_USERNAME", "@mediafamm")
 CHANNEL_USERNAME_2 = os.getenv("CHANNEL_USERNAME_2", "@thefamilymsk")
 CHAT_USERNAME = os.getenv("CHAT_USERNAME", "@familyychaat")
@@ -283,12 +285,7 @@ def get_admins(context: ContextTypes.DEFAULT_TYPE) -> Set[int]:
         bd["admins"] = set()
     
     # Всегда добавляем админов из .env (на случай если добавили новых)
-    if ADMIN_USER_ID:
-        bd["admins"].add(ADMIN_USER_ID)
-    if ADMIN_USER_ID_2:
-        bd["admins"].add(ADMIN_USER_ID_2)
-    if ADMIN_USER_ID_3:
-        bd["admins"].add(ADMIN_USER_ID_3)
+    bd["admins"].update(ADMIN_IDS)
     
     return bd["admins"]
 
