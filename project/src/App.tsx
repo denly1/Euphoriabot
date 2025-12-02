@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import Stories from './components/Stories';
 import AdminPanel from './components/AdminPanel';
-import { getPosters, Poster } from './lib/api';
+import { getPosters, Poster, checkAdmin } from './lib/api';
 import { Settings } from 'lucide-react';
 
 // Декларация Telegram WebApp
@@ -34,6 +34,7 @@ function App() {
   const [touchEnd, setTouchEnd] = useState(0);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [userId, setUserId] = useState<number | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     // Инициализация Telegram WebApp
@@ -47,6 +48,12 @@ function App() {
       if (user) {
         setUserId(user.id);
         console.log('Telegram User ID:', user.id);
+        
+        // Проверяем является ли пользователь админом
+        checkAdmin(user.id).then(isAdminUser => {
+          setIsAdmin(isAdminUser);
+          console.log('Is Admin:', isAdminUser);
+        });
       }
     }
     
@@ -127,8 +134,8 @@ function App() {
         </div>
 
         <div className="relative z-10 pb-24">
-          {/* Кнопка админ-панели */}
-          {userId && (
+          {/* Кнопка админ-панели - только для админов */}
+          {isAdmin && (
             <button
               onClick={() => setShowAdminPanel(true)}
               className="fixed top-4 right-4 z-50 p-3 bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 rounded-full shadow-lg transition-all"
