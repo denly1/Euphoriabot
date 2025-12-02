@@ -1545,15 +1545,15 @@ async def do_weekly_broadcast(context: ContextTypes.DEFAULT_TYPE) -> None:
     logger.info("Broadcast completed: %d/%d users received the poster", 
                 success_count, len(known_users))
     
-    # Отправляем админу отчет
-    admin_id = ADMIN_USER_ID
-    if admin_id:
-        try:
-            report = f"📊 Рассылка завершена:\n"
-            report += f"✅ Отправлено: {success_count}/{len(known_users)} пользователей"
-            await context.bot.send_message(admin_id, report)
-        except Exception as e:
-            logger.warning("Failed to send broadcast report to admin: %s", e)
+    # Отправляем админам отчет
+    if ADMIN_IDS:
+        report = f"📊 Рассылка завершена:\n"
+        report += f"✅ Отправлено: {success_count}/{len(known_users)} пользователей"
+        for admin_id in ADMIN_IDS:
+            try:
+                await context.bot.send_message(admin_id, report)
+            except Exception as e:
+                logger.warning("Failed to send broadcast report to admin %s: %s", admin_id, e)
 
 
 async def weekly_job(context: CallbackContext) -> None:
@@ -1575,11 +1575,12 @@ def schedule_weekly(app: Application) -> None:
 
 
 async def _notify_admin_start(_: CallbackContext) -> None:
-    if ADMIN_USER_ID:
-        try:
-            await _.bot.send_message(ADMIN_USER_ID, "Бот запущен ✅")
-        except Exception:
-            pass
+    if ADMIN_IDS:
+        for admin_id in ADMIN_IDS:
+            try:
+                await _.bot.send_message(admin_id, "Бот запущен ✅")
+            except Exception:
+                pass
 
 
 # ----------------------
