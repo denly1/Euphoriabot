@@ -139,7 +139,7 @@ async def get_posters():
         async with db_pool.acquire() as conn:
             rows = await conn.fetch(
                 """
-                SELECT id, file_id, caption, ticket_url, created_at, is_active
+                SELECT id, file_id, caption, ticket_url, venue_map_file_id, created_at, is_active
                 FROM posters
                 WHERE is_active = true
                 ORDER BY created_at DESC
@@ -173,6 +173,7 @@ async def get_posters():
                     "title": title,
                     "subtitle": subtitle,
                     "ticket_url": row['ticket_url'],
+                    "venue_map_file_id": row['venue_map_file_id'],
                     "created_at": row['created_at'].isoformat(),
                     "is_active": row['is_active']
                 })
@@ -193,7 +194,7 @@ async def get_latest_poster():
         async with db_pool.acquire() as conn:
             row = await conn.fetchrow(
                 """
-                SELECT id, file_id, caption, ticket_url, created_at, is_active
+                SELECT id, file_id, caption, ticket_url, venue_map_file_id, created_at, is_active
                 FROM posters
                 WHERE is_active = true
                 ORDER BY created_at DESC
@@ -228,6 +229,7 @@ async def get_latest_poster():
                 "title": title,
                 "subtitle": subtitle,
                 "ticket_url": row['ticket_url'],
+                "venue_map_file_id": row['venue_map_file_id'],
                 "created_at": row['created_at'].isoformat(),
                 "is_active": row['is_active']
             }
@@ -248,7 +250,7 @@ async def get_poster(poster_id: int):
         async with db_pool.acquire() as conn:
             row = await conn.fetchrow(
                 """
-                SELECT id, file_id, caption, ticket_url, created_at, is_active
+                SELECT id, file_id, caption, ticket_url, venue_map_file_id, created_at, is_active
                 FROM posters
                 WHERE id = $1
                 """,
@@ -263,6 +265,7 @@ async def get_poster(poster_id: int):
                 "file_id": row['file_id'],
                 "caption": row['caption'],
                 "ticket_url": row['ticket_url'],
+                "venue_map_file_id": row['venue_map_file_id'],
                 "created_at": row['created_at'].isoformat(),
                 "is_active": row['is_active']
             }
@@ -351,6 +354,40 @@ async def get_photo(file_id: str):
         raise
     except Exception as e:
         logger.error(f"Failed to get photo {file_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/stories")
+async def get_stories():
+    """Получить все активные Stories"""
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    try:
+        async with db_pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT id, file_id, caption, order_num, created_at, is_active
+                FROM stories
+                WHERE is_active = true
+                ORDER BY order_num ASC, created_at DESC
+                """
+            )
+            
+            stories = []
+            for row in rows:
+                stories.append({
+                    "id": row['id'],
+                    "file_id": row['file_id'],
+                    "caption": row['caption'],
+                    "order_num": row['order_num'],
+                    "created_at": row['created_at'].isoformat(),
+                    "is_active": row['is_active']
+                })
+            
+            return stories
+    except Exception as e:
+        logger.error(f"Failed to fetch stories: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
