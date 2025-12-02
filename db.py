@@ -330,18 +330,20 @@ async def create_poster(
     file_id: str,
     caption: Optional[str] = None,
     ticket_url: Optional[str] = None,
+    venue_map_file_id: Optional[str] = None,
 ) -> int:
     """Создать новую афишу и вернуть её ID"""
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
             """
-            INSERT INTO posters (file_id, caption, ticket_url, is_active)
-            VALUES ($1, $2, $3, true)
+            INSERT INTO posters (file_id, caption, ticket_url, venue_map_file_id, is_active)
+            VALUES ($1, $2, $3, $4, true)
             RETURNING id
             """,
             file_id,
             caption,
             ticket_url,
+            venue_map_file_id,
         )
         return row['id']
 
@@ -351,7 +353,7 @@ async def get_active_posters(pool: asyncpg.Pool) -> list[Dict[str, Any]]:
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             """
-            SELECT id, file_id, caption, ticket_url, created_at, is_active
+            SELECT id, file_id, caption, ticket_url, venue_map_file_id, created_at, is_active
             FROM posters
             WHERE is_active = true
             ORDER BY created_at DESC
@@ -365,7 +367,7 @@ async def get_latest_poster(pool: asyncpg.Pool) -> Optional[Dict[str, Any]]:
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
             """
-            SELECT id, file_id, caption, ticket_url, created_at, is_active
+            SELECT id, file_id, caption, ticket_url, venue_map_file_id, created_at, is_active
             FROM posters
             WHERE is_active = true
             ORDER BY created_at DESC
@@ -379,7 +381,7 @@ async def get_poster_by_id(pool: asyncpg.Pool, poster_id: int) -> Optional[Dict[
     """Получить афишу по ID"""
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
-            "SELECT id, file_id, caption, ticket_url, created_at, is_active FROM posters WHERE id=$1",
+            "SELECT id, file_id, caption, ticket_url, venue_map_file_id, created_at, is_active FROM posters WHERE id=$1",
             poster_id
         )
         return dict(row) if row else None
@@ -483,3 +485,59 @@ async def get_attendance_stats(pool: asyncpg.Pool, poster_id: int) -> dict:
             poster_id
         )
         return dict(stats) if stats else {}
+
+
+# ----------------------
+# Stories Functions
+# ----------------------
+
+async def create_story(pool: asyncpg.Pool, file_id: str, caption: Optional[str] = None, story_order: int = 0) -> int:
+    """Создать новую Story"""
+    async with pool.acquire() as conn:
+        story_id = await conn.fetchval(
+            """
+            INSERT INTO stories (file_id, caption, story_order, is_active)
+            VALUES ($1, $2, $3, true)
+            RETURNING id
+            """,
+            file_id, caption, story_order
+        )
+        return story_id
+
+
+async def get_active_stories(pool: asyncpg.Pool):
+    """Получить все активные Stories, отсортированные по порядку"""
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT id, file_id, caption, story_order, created_at
+            FROM stories
+            WHERE is_active = true
+            ORDER BY story_order ASC, created_at DESC
+            """
+        )
+        return [dict(row) for row in rows]
+
+
+async def delete_story(pool: asyncpg.Pool, story_id: int) -> None:
+    """Удалить Story"""
+    async with pool.acquire() as conn:
+        await conn.execute("DELETE FROM stories WHERE id = $1", story_id)
+
+
+async def update_story_order(pool: asyncpg.Pool, story_id: int, new_order: int) -> None:
+    """Обновить порядок Story"""
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE stories SET story_order = $2 WHERE id = $1",
+            story_id, new_order
+        )
+
+
+async def update_story_caption(pool: asyncpg.Pool, story_id: int, caption: str) -> None:
+    """Обновить описание Story"""
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE stories SET caption = $2 WHERE id = $1",
+            story_id, caption
+        )
