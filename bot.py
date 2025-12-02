@@ -1048,12 +1048,12 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                     try:
                         poster_id = await create_poster(
                             pool,
-                            file_id=draft.get("photo_path") or draft["file_id"],  # Используем photo_path если есть
+                            file_id=draft["file_id"],  # Сохраняем file_id для отображения в мини-приложении
                             caption=draft.get("caption") or "",
                             ticket_url=draft.get("ticket_url"),
                             venue_map_file_id=draft.get("venue_map_file_id")
                         )
-                        logger.info("Poster saved to DB with ID: %s, photo_path: %s", poster_id, draft.get("photo_path"))
+                        logger.info("Poster saved to DB with ID: %s, file_id: %s", poster_id, draft["file_id"])
                     except Exception as e:
                         logger.error("Failed to save poster to DB: %s", e)
                         await query.edit_message_text(f"❌ Ошибка сохранения в БД: {e}")
