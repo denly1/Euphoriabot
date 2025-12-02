@@ -12,7 +12,35 @@ interface Story {
   image?: string;
 }
 
-const stories: Story[] = [];
+const stories: Story[] = [
+  {
+    id: 1,
+    title: 'Работа в проекте',
+    avatar: '💼',
+    content: {
+      subtitle: undefined,
+      items: []
+    }
+  },
+  {
+    id: 2,
+    title: 'О НАС',
+    avatar: '👥',
+    content: {
+      subtitle: undefined,
+      items: []
+    }
+  },
+  {
+    id: 3,
+    title: 'МЕДИА STAFF',
+    avatar: '📸',
+    content: {
+      subtitle: undefined,
+      items: []
+    }
+  }
+];
 
 const STORY_DURATION = 15000;
 
