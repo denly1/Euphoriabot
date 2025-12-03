@@ -227,31 +227,28 @@ function App() {
           )}
         </div>
 
-        {/* Кнопка билета - показывается для ТЕКУЩЕЙ афиши */}
-        {currentPoster?.ticket_url && (
+        {/* Кнопки внизу - показываются для ТЕКУЩЕЙ афиши */}
+        {currentPoster && (
           <div 
-            className="fixed bottom-0 left-0 right-0 p-4 z-[9999]" 
+            className="fixed bottom-0 left-0 right-0 p-4 z-[9999] space-y-3" 
             style={{ 
               pointerEvents: 'auto',
               touchAction: 'auto'
             }}
           >
+            {/* Кнопка работы промоутером */}
             <a
-              href={currentPoster.ticket_url}
+              href="https://t.me/euphoriamsktus"
               target="_blank"
               rel="noopener noreferrer"
               onTouchStart={(e) => {
                 e.stopPropagation();
-                console.log('Touch start на кнопке билета');
               }}
               onClick={(e) => {
                 e.stopPropagation();
-                console.log('Клик по кнопке билета! URL:', currentPoster.ticket_url);
-                if (currentPoster.ticket_url) {
-                  window.open(currentPoster.ticket_url, '_blank');
-                }
+                window.open('https://t.me/euphoriamsktus', '_blank');
               }}
-              className="block w-full py-4 px-6 bg-gradient-to-r from-blue-500 via-indigo-600 to-purple-600 text-white font-bold text-lg rounded-xl shadow-lg active:scale-95 transition-transform duration-150 text-center select-none outline-none"
+              className="block w-full py-4 px-6 bg-gradient-to-r from-purple-500 via-pink-600 to-red-600 text-white font-bold text-lg rounded-xl shadow-lg active:scale-95 transition-transform duration-150 text-center select-none outline-none"
               style={{ 
                 WebkitTapHighlightColor: 'transparent',
                 touchAction: 'manipulation',
@@ -260,8 +257,38 @@ function App() {
                 border: 'none'
               }}
             >
-              🎫 Купить билет
+              💼 Работа промоутером
             </a>
+
+            {/* Кнопка билета */}
+            {currentPoster.ticket_url && (
+              <a
+                href={currentPoster.ticket_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onTouchStart={(e) => {
+                  e.stopPropagation();
+                  console.log('Touch start на кнопке билета');
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  console.log('Клик по кнопке билета! URL:', currentPoster.ticket_url);
+                  if (currentPoster.ticket_url) {
+                    window.open(currentPoster.ticket_url, '_blank');
+                  }
+                }}
+                className="block w-full py-4 px-6 bg-gradient-to-r from-blue-500 via-indigo-600 to-purple-600 text-white font-bold text-lg rounded-xl shadow-lg active:scale-95 transition-transform duration-150 text-center select-none outline-none"
+                style={{ 
+                  WebkitTapHighlightColor: 'transparent',
+                  touchAction: 'manipulation',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  border: 'none'
+                }}
+              >
+                🎫 Купить билет
+              </a>
+            )}
           </div>
         )}
       </main>
