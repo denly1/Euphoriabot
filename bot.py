@@ -543,7 +543,10 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if poster.get("ticket_url"):
         action_buttons.append([InlineKeyboardButton("🎫 Купить билет", url=poster["ticket_url"])])
     
-    # 2. Кнопка схемы зала (если есть)
+    # 2. Кнопка работы промоутером
+    action_buttons.append([InlineKeyboardButton("💼 Работа промоутером", url="https://t.me/euphoriamsktus")])
+    
+    # 3. Кнопка схемы зала (если есть)
     if poster.get("venue_map_file_id"):
         action_buttons.append([InlineKeyboardButton("🗺 Схема зала", callback_data=f"view_venue_map:{current_poster_index}")])
     
