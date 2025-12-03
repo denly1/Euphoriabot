@@ -23,5 +23,8 @@ jobs:
           cd project
           npm install
           npm run build
+          mkdir -p /var/www/euphoria
+          rm -rf /var/www/euphoria/*
+          cp -r dist/* /var/www/euphoria/
           systemctl restart nginx
           echo "✅ EuphoriaBot деплой завершен!"
