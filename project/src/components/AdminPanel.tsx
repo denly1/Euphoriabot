@@ -16,9 +16,6 @@ export default function AdminPanel({ userId, onClose }: AdminPanelProps) {
   const [newStoryFileId, setNewStoryFileId] = useState('');
   const [newStoryCaption, setNewStoryCaption] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string>('');
 
   useEffect(() => {
     checkAdminStatus();
@@ -36,73 +33,17 @@ export default function AdminPanel({ userId, onClose }: AdminPanelProps) {
     setStories(data);
   }
 
-  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      // Создаем preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  }
-
-  async function uploadImage(): Promise<string | null> {
-    if (!selectedFile) return null;
-
-    setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-      formData.append('user_id', userId.toString());
-
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-      const response = await fetch(`${apiUrl}/upload-story-image`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error('Upload failed');
-      }
-
-      const data = await response.json();
-      return data.file_url;
-    } catch (error) {
-      console.error('Upload error:', error);
-      return null;
-    } finally {
-      setUploading(false);
-    }
-  }
-
   async function handleCreateStory() {
-    let fileId = newStoryFileId.trim();
-
-    // Если выбран файл - загружаем его
-    if (selectedFile) {
-      const uploadedUrl = await uploadImage();
-      if (!uploadedUrl) {
-        alert('❌ Ошибка загрузки фото');
-        return;
-      }
-      fileId = uploadedUrl;
-    }
-
-    if (!fileId) {
-      alert('Выберите фото или введите File ID');
+    if (!newStoryFileId.trim()) {
+      alert('Введите File ID фото');
       return;
     }
 
-    const result = await createStory(userId, fileId, newStoryCaption || undefined);
+    const result = await createStory(userId, newStoryFileId, newStoryCaption || undefined);
     if (result) {
       await loadStories();
       setNewStoryFileId('');
       setNewStoryCaption('');
-      setSelectedFile(null);
-      setPreviewUrl('');
       setShowCreateForm(false);
       alert('✅ Story создана!');
     } else {
@@ -196,28 +137,6 @@ export default function AdminPanel({ userId, onClose }: AdminPanelProps) {
             {/* Create Form */}
             {showCreateForm && (
               <div className="bg-white/5 rounded-xl p-6 space-y-4 border border-cyan-500/20">
-                {/* Загрузка фото из галереи */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    📸 Загрузить фото из галереи
-                  </label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileSelect}
-                    className="w-full px-4 py-3 bg-black/30 border border-cyan-500/30 rounded-lg focus:outline-none focus:border-cyan-500 text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-cyan-600 file:text-white hover:file:bg-cyan-700"
-                  />
-                  {previewUrl && (
-                    <div className="mt-3">
-                      <img src={previewUrl} alt="Preview" className="w-32 h-32 object-cover rounded-lg border border-cyan-500/30" />
-                    </div>
-                  )}
-                </div>
-
-                <div className="text-center text-gray-400 text-sm">
-                  — или —
-                </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     File ID фото (из Telegram)
@@ -228,13 +147,15 @@ export default function AdminPanel({ userId, onClose }: AdminPanelProps) {
                     onChange={(e) => setNewStoryFileId(e.target.value)}
                     placeholder="AgACAgIAAxkBAAI..."
                     className="w-full px-4 py-3 bg-black/30 border border-cyan-500/30 rounded-lg focus:outline-none focus:border-cyan-500 text-white"
-                    disabled={!!selectedFile}
                   />
+                  <p className="text-xs text-gray-400 mt-1">
+                    💡 Отправьте фото боту и скопируйте file_id из логов
+                  </p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    📝 Текст Story (опционально)
+                    Подпись (опционально)
                   </label>
                   <textarea
                     value={newStoryCaption}
@@ -247,20 +168,10 @@ export default function AdminPanel({ userId, onClose }: AdminPanelProps) {
 
                 <button
                   onClick={handleCreateStory}
-                  disabled={uploading}
-                  className="w-full py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
+                  className="w-full py-3 bg-green-600 hover:bg-green-700 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
                 >
-                  {uploading ? (
-                    <>
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Загрузка...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-5 h-5" />
-                      Создать
-                    </>
-                  )}
+                  <Save className="w-5 h-5" />
+                  Создать
                 </button>
               </div>
             )}

@@ -4,12 +4,9 @@ FastAPI backend для подключения веб-приложения к Pos
 """
 
 import os
-import uuid
-import shutil
-from pathlib import Path
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, FileResponse
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional
 import asyncpg
@@ -540,61 +537,9 @@ async def delete_story(story_id: int, user_id: int):
 
 
 @app.get("/check-admin/{user_id}")
-async def check_admin_endpoint(user_id: int):
+async def check_admin(user_id: int):
     """Проверить, является ли пользователь админом"""
     return {"is_admin": is_admin(user_id)}
-
-
-@app.post("/upload-story-image")
-async def upload_story_image(
-    user_id: int = Form(...),
-    file: UploadFile = File(...)
-):
-    """Загрузить изображение для Story"""
-    # Проверка прав админа
-    if not is_admin(user_id):
-        raise HTTPException(status_code=403, detail="Access denied")
-    
-    # Проверка типа файла
-    if not file.content_type or not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="File must be an image")
-    
-    try:
-        # Создаем директорию для хранения если её нет
-        upload_dir = Path("uploads/stories")
-        upload_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Генерируем уникальное имя файла
-        file_extension = Path(file.filename or "image.jpg").suffix
-        unique_filename = f"{uuid.uuid4()}{file_extension}"
-        file_path = upload_dir / unique_filename
-        
-        # Сохраняем файл
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-        
-        # Возвращаем URL для доступа к файлу
-        file_url = f"/uploads/stories/{unique_filename}"
-        
-        return {
-            "success": True,
-            "file_url": file_url,
-            "filename": unique_filename
-        }
-    except Exception as e:
-        logger.error(f"Failed to upload image: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/uploads/stories/{filename}")
-async def get_story_image(filename: str):
-    """Получить загруженное изображение Story"""
-    file_path = Path("uploads/stories") / filename
-    
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail="Image not found")
-    
-    return FileResponse(file_path)
 
 
 if __name__ == "__main__":
