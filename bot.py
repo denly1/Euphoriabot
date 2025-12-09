@@ -597,6 +597,7 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                     chat_id=update.effective_chat.id,
                     photo=file_id,
                     caption=caption,
+                    parse_mode='HTML',
                     reply_markup=InlineKeyboardMarkup(all_buttons)
                 )
                 photo_sent = True
@@ -614,6 +615,7 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                             chat_id=update.effective_chat.id,
                             photo=photo_file,
                             caption=caption,
+                            parse_mode='HTML',
                             reply_markup=InlineKeyboardMarkup(all_buttons)
                         )
                     photo_sent = True
@@ -990,6 +992,7 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                         chat_id="@euphoriamskt",
                         photo=file_id,
                         caption=caption,
+                        parse_mode='HTML',
                         reply_markup=reply_markup
                     )
                     await query.edit_message_text("✅ Афиша опубликована в канале @euphoriamskt")
@@ -1127,7 +1130,8 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 await context.bot.send_photo(
                     chat_id=query.message.chat_id, 
                     photo=poster["file_id"], 
-                    caption=poster.get("caption", ""), 
+                    caption=poster.get("caption", ""),
+                    parse_mode='HTML',
                     reply_markup=rm
                 )
                 
@@ -1409,7 +1413,7 @@ async def send_poster_to_chat(context: ContextTypes.DEFAULT_TYPE, chat_id: int) 
             buttons.append([InlineKeyboardButton("🗺 Схема зала", callback_data=f"view_venue_map:0")])
         
         reply_markup = InlineKeyboardMarkup(buttons) if buttons else None
-        await context.bot.send_photo(chat_id=chat_id, photo=file_id, caption=caption, reply_markup=reply_markup)
+        await context.bot.send_photo(chat_id=chat_id, photo=file_id, caption=caption, parse_mode='HTML', reply_markup=reply_markup)
     except Forbidden:
         logger.info("Cannot send message to chat_id %s (blocked or privacy)", chat_id)
     except Exception as e:
@@ -1632,7 +1636,7 @@ async def broadcast_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     for uid in list(get_known_users(context)):
         try:
             if photo:
-                await context.bot.send_photo(uid, photo=photo, caption=caption)
+                await context.bot.send_photo(uid, photo=photo, caption=caption, parse_mode='HTML')
             else:
                 await context.bot.send_message(uid, caption)
             success_count += 1
