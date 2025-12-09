@@ -961,6 +961,41 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 await do_weekly_broadcast(context)
                 await query.edit_message_text("Афиша отправлена всем ✅")
             
+            elif sub == "post_to_channel":
+                # Публикация афиши в канал
+                all_posters = context.bot_data.get("all_posters", [])
+                if not all_posters:
+                    await query.edit_message_text("❌ Нет афиш для публикации")
+                    return
+                
+                poster = all_posters[-1]
+                file_id = poster.get("file_id")
+                caption = poster.get("caption", "")
+                ticket_url = poster.get("ticket_url")
+                venue_map_file_id = poster.get("venue_map_file_id")
+                
+                # Формируем кнопки
+                buttons = []
+                if ticket_url:
+                    buttons.append([InlineKeyboardButton("🎫 Купить билет", url=ticket_url)])
+                buttons.append([InlineKeyboardButton("💼 Работа промоутером", url="https://t.me/euphoriamsktus")])
+                if venue_map_file_id:
+                    buttons.append([InlineKeyboardButton("🗺 Схема зала", callback_data=f"view_venue_map:0")])
+                
+                reply_markup = InlineKeyboardMarkup(buttons) if buttons else None
+                
+                try:
+                    # Публикуем в канал @euphoriamskt
+                    await context.bot.send_photo(
+                        chat_id="@euphoriamskt",
+                        photo=file_id,
+                        caption=caption,
+                        reply_markup=reply_markup
+                    )
+                    await query.edit_message_text("✅ Афиша опубликована в канале @euphoriamskt")
+                except Exception as e:
+                    await query.edit_message_text(f"❌ Ошибка публикации: {e}")
+            
             elif sub == "set_ticket":
                 context.user_data["awaiting_ticket"] = True
                 await query.edit_message_text("Пришлите ссылку для кнопки «Купить билет»")
@@ -1356,11 +1391,24 @@ async def send_poster_to_chat(context: ContextTypes.DEFAULT_TYPE, chat_id: int) 
     file_id = poster.get("file_id")
     caption = poster.get("caption", "")
     ticket_url = poster.get("ticket_url")
+    venue_map_file_id = poster.get("venue_map_file_id")
     
     try:
-        reply_markup = None
+        # Формируем кнопки как в show_main_menu
+        buttons = []
+        
+        # 1. Кнопка билетов (если есть)
         if ticket_url:
-            reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton("🎫 Купить билет", url=ticket_url)]])
+            buttons.append([InlineKeyboardButton("🎫 Купить билет", url=ticket_url)])
+        
+        # 2. Кнопка работы промоутером (всегда)
+        buttons.append([InlineKeyboardButton("💼 Работа промоутером", url="https://t.me/euphoriamsktus")])
+        
+        # 3. Кнопка схемы зала (если есть)
+        if venue_map_file_id:
+            buttons.append([InlineKeyboardButton("🗺 Схема зала", callback_data=f"view_venue_map:0")])
+        
+        reply_markup = InlineKeyboardMarkup(buttons) if buttons else None
         await context.bot.send_photo(chat_id=chat_id, photo=file_id, caption=caption, reply_markup=reply_markup)
     except Forbidden:
         logger.info("Cannot send message to chat_id %s (blocked or privacy)", chat_id)
@@ -1476,11 +1524,14 @@ async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         ],
         [
             InlineKeyboardButton("📤 Разослать афишу", callback_data="admin:broadcast_now"),
-            InlineKeyboardButton("🗑 Удалить афишу", callback_data="admin:delete_poster")
+            InlineKeyboardButton("📢 В канал", callback_data="admin:post_to_channel")
+        ],
+        [
+            InlineKeyboardButton("🗑 Удалить афишу", callback_data="admin:delete_poster"),
+            InlineKeyboardButton("🔗 Задать ссылку", callback_data="admin:set_ticket")
         ],
         # Настройки и рассылки
         [
-            InlineKeyboardButton("🔗 Задать ссылку", callback_data="admin:set_ticket"),
             InlineKeyboardButton("📝 Текстовая рассылка", callback_data="admin:broadcast_text")
         ],
         # Пользователи
