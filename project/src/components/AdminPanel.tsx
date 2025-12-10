@@ -218,28 +218,29 @@ export default function AdminPanel({ userId, onClose }: AdminPanelProps) {
                     📍 Выберите Story для заполнения
                   </label>
                   <div className="grid grid-cols-1 gap-3">
-                    {[1, 2, 3].map((slot) => {
-                      const slotInfo = STORY_SLOTS[slot as keyof typeof STORY_SLOTS];
-                      return (
-                        <button
-                          key={slot}
-                          onClick={() => setSelectedSlot(slot)}
-                          className={`p-4 rounded-lg font-semibold transition-all text-left ${
-                            selectedSlot === slot
-                              ? 'bg-gradient-to-r from-cyan-600 to-purple-600 text-white shadow-lg'
-                              : 'bg-black/30 text-gray-300 hover:bg-black/50 border border-cyan-500/20'
-                          }`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <span className="text-2xl">{slotInfo.icon}</span>
-                            <div>
-                              <div className="font-bold">{slotInfo.name}</div>
-                              <div className="text-xs opacity-70">Слот {slot}</div>
-                            </div>
+                    {[
+                      { slot: 1, name: 'Работа в проекте', icon: '💼' },
+                      { slot: 2, name: 'О нас', icon: '👥' },
+                      { slot: 3, name: 'Медиа/Стафф', icon: '📸' }
+                    ].map(({ slot, name, icon }) => (
+                      <button
+                        key={slot}
+                        onClick={() => setSelectedSlot(slot)}
+                        className={`p-4 rounded-lg font-semibold transition-all text-left ${
+                          selectedSlot === slot
+                            ? 'bg-gradient-to-r from-cyan-600 to-purple-600 text-white shadow-lg'
+                            : 'bg-black/30 text-gray-300 hover:bg-black/50 border border-cyan-500/20'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">{icon}</span>
+                          <div>
+                            <div className="font-bold">{name}</div>
+                            <div className="text-xs opacity-70">Слот {slot}</div>
                           </div>
-                        </button>
-                      );
-                    })}
+                        </div>
+                      </button>
+                    ))}
                   </div>
                 </div>
 
