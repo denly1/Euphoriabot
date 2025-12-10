@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Story } from '../lib/api';
 import { checkAdmin, getStories, createStory, updateStory, deleteStory } from '../lib/api';
-import { X, Plus, Edit2, Trash2, Save } from 'lucide-react';
+import { X, Plus, Edit2, Trash2, Save, Image as ImageIcon, Type } from 'lucide-react';
 
 interface AdminPanelProps {
   userId: number;
@@ -12,9 +12,11 @@ export default function AdminPanel({ userId, onClose }: AdminPanelProps) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [stories, setStories] = useState<Story[]>([]);
-  const [editingStory, setEditingStory] = useState<Story | null>(null);
-  const [newStoryFileId, setNewStoryFileId] = useState('');
-  const [newStoryCaption, setNewStoryCaption] = useState('');
+  const [selectedSlot, setSelectedSlot] = useState<number>(1);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState('');
+  const [caption, setCaption] = useState('');
+  const [uploading, setUploading] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
 
   useEffect(() => {
@@ -33,20 +35,93 @@ export default function AdminPanel({ userId, onClose }: AdminPanelProps) {
     setStories(data);
   }
 
+  function handleFileSelect(event: any) {
+    const file = event.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  async function uploadPhoto(): Promise<string | null> {
+    if (!selectedFile) return null;
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('user_id', userId.toString());
+
+      const apiUrl = import.meta.env?.VITE_API_URL || 'https://euphoria.publicvm.com/api';
+      const response = await fetch(`${apiUrl}/upload-story-photo`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const data = await response.json();
+      return data.photo_url;
+    } catch (error) {
+      console.error('Upload error:', error);
+      return null;
+    } finally {
+      setUploading(false);
+    }
+  }
+
   async function handleCreateStory() {
-    if (!newStoryFileId.trim()) {
-      alert('Введите File ID фото');
+    let photoUrl = '';
+
+    // Если выбран файл - загружаем его
+    if (selectedFile) {
+      const uploaded = await uploadPhoto();
+      if (!uploaded) {
+        alert('❌ Ошибка загрузки фото');
+        return;
+      }
+      photoUrl = uploaded;
+    }
+
+    if (!photoUrl && !caption.trim()) {
+      alert('Добавьте фото или текст');
       return;
     }
 
-    const result = await createStory(userId, newStoryFileId, newStoryCaption || undefined);
-    if (result) {
-      await loadStories();
-      setNewStoryFileId('');
-      setNewStoryCaption('');
-      setShowCreateForm(false);
-      alert('✅ Story создана!');
-    } else {
+    // Создаем Story в выбранном слоте
+    try {
+      const formData = new FormData();
+      formData.append('user_id', userId.toString());
+      formData.append('slot_number', selectedSlot.toString());
+      formData.append('file_id', photoUrl);
+      if (caption) {
+        formData.append('caption', caption);
+      }
+
+      const apiUrl = import.meta.env?.VITE_API_URL || 'https://euphoria.publicvm.com/api';
+      const response = await fetch(`${apiUrl}/stories/create-in-slot`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        await loadStories();
+        setCaption('');
+        setSelectedFile(null);
+        setPreviewUrl('');
+        setShowCreateForm(false);
+        alert('✅ Story создана!');
+      } else {
+        alert('❌ Ошибка создания Story');
+      }
+    } catch (error) {
+      console.error('Create story error:', error);
       alert('❌ Ошибка создания Story');
     }
   }

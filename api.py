@@ -4,9 +4,12 @@ FastAPI backend для подключения веб-приложения к Pos
 """
 
 import os
-from fastapi import FastAPI, HTTPException
+import uuid
+import shutil
+from pathlib import Path
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
 from pydantic import BaseModel
 from typing import Optional
 import asyncpg
@@ -382,7 +385,7 @@ async def get_photo(file_id: str):
 
 @app.get("/stories")
 async def get_stories():
-    """Получить все активные Stories"""
+    """Получить все активные Stories (3 слота)"""
     if not db_pool:
         raise HTTPException(status_code=503, detail="Database not available")
     
@@ -390,20 +393,30 @@ async def get_stories():
         async with db_pool.acquire() as conn:
             rows = await conn.fetch(
                 """
-                SELECT id, file_id, caption, order_num, created_at, is_active
+                SELECT id, file_id, caption, slot_number, created_at, is_active
                 FROM stories
                 WHERE is_active = true
-                ORDER BY order_num ASC, created_at DESC
+                ORDER BY slot_number ASC
                 """
             )
             
             stories = []
             for row in rows:
+                file_id = row['file_id']
+                # Проверяем, является ли это локальным файлом или Telegram file_id
+                is_local_file = file_id.startswith('/uploads/') or file_id.startswith('uploads/')
+                
+                if is_local_file:
+                    photo_url = file_id if file_id.startswith('/') else f'/{file_id}'
+                else:
+                    photo_url = f"/photo/{file_id}"
+                
                 stories.append({
                     "id": row['id'],
-                    "file_id": row['file_id'],
+                    "file_id": file_id,
+                    "photo_url": photo_url,
                     "caption": row['caption'],
-                    "order_num": row['order_num'],
+                    "slot_number": row['slot_number'],
                     "created_at": row['created_at'].isoformat(),
                     "is_active": row['is_active']
                 })
@@ -537,9 +550,113 @@ async def delete_story(story_id: int, user_id: int):
 
 
 @app.get("/check-admin/{user_id}")
-async def check_admin(user_id: int):
+async def check_admin_endpoint(user_id: int):
     """Проверить, является ли пользователь админом"""
     return {"is_admin": is_admin(user_id)}
+
+
+@app.post("/upload-story-photo")
+async def upload_story_photo(
+    user_id: int = Form(...),
+    file: UploadFile = File(...)
+):
+    """Загрузить фото для Story"""
+    # Проверка прав админа
+    if not is_admin(user_id):
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Проверка типа файла
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+    
+    try:
+        # Создаем директорию для хранения если её нет
+        upload_dir = Path("uploads/stories")
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Генерируем уникальное имя файла
+        file_extension = Path(file.filename or "image.jpg").suffix
+        unique_filename = f"{uuid.uuid4()}{file_extension}"
+        file_path = upload_dir / unique_filename
+        
+        # Сохраняем файл
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        # Возвращаем относительный путь для сохранения в БД
+        relative_path = f"/uploads/stories/{unique_filename}"
+        
+        logger.info(f"Story photo uploaded: {relative_path}")
+        
+        return {
+            "success": True,
+            "photo_url": relative_path,
+            "filename": unique_filename
+        }
+    except Exception as e:
+        logger.error(f"Failed to upload story photo: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/uploads/stories/{filename}")
+async def get_story_photo(filename: str):
+    """Получить загруженное фото Story"""
+    file_path = Path("uploads/stories") / filename
+    
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Photo not found")
+    
+    return FileResponse(file_path)
+
+
+@app.post("/stories/create-in-slot")
+async def create_story_in_slot(
+    user_id: int = Form(...),
+    slot_number: int = Form(...),
+    file_id: str = Form(...),
+    caption: str = Form(None)
+):
+    """Создать Story в указанном слоте"""
+    # Проверка прав админа
+    if not is_admin(user_id):
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Проверка слота
+    if slot_number not in [1, 2, 3]:
+        raise HTTPException(status_code=400, detail="Slot number must be 1, 2, or 3")
+    
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    try:
+        async with db_pool.acquire() as conn:
+            # Деактивируем старую Story в этом слоте
+            await conn.execute(
+                "UPDATE stories SET is_active = false WHERE slot_number = $1 AND is_active = true",
+                slot_number
+            )
+            
+            # Создаем новую Story
+            row = await conn.fetchrow(
+                """
+                INSERT INTO stories (file_id, caption, slot_number, is_active)
+                VALUES ($1, $2, $3, true)
+                RETURNING id, file_id, caption, slot_number, created_at, is_active
+                """,
+                file_id, caption, slot_number
+            )
+            
+            return {
+                "id": row['id'],
+                "file_id": row['file_id'],
+                "caption": row['caption'],
+                "slot_number": row['slot_number'],
+                "created_at": row['created_at'].isoformat(),
+                "is_active": row['is_active']
+            }
+    except Exception as e:
+        logger.error(f"Failed to create story in slot {slot_number}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":
