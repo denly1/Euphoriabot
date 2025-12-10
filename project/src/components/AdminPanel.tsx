@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Story, STORY_SLOTS } from '../lib/api';
-import { checkAdmin, getStories, createStory, updateStory, deleteStory } from '../lib/api';
-import { X, Plus, Edit2, Trash2, Save, Image as ImageIcon, Type, Briefcase, Users, Camera } from 'lucide-react';
+import { Story, checkAdmin, getStories, updateStory, deleteStory } from '../lib/api';
+import { X, Plus, Edit2, Trash2, Save, Image as ImageIcon, Type } from 'lucide-react';
 
 interface AdminPanelProps {
   userId: number;
@@ -18,6 +17,7 @@ export default function AdminPanel({ userId, onClose }: AdminPanelProps) {
   const [caption, setCaption] = useState('');
   const [uploading, setUploading] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [editingStory, setEditingStory] = useState<Story | null>(null);
 
   useEffect(() => {
     checkAdminStatus();
