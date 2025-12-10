@@ -318,87 +318,110 @@ export default function AdminPanel({ userId, onClose }: AdminPanelProps) {
                   <p className="text-sm mt-2">Создайте первую Story!</p>
                 </div>
               ) : (
-                stories.map((story) => (
-                  <div
-                    key={story.id}
-                    className={`bg-white/5 rounded-xl p-4 border transition-all ${
-                      story.is_active ? 'border-cyan-500/30' : 'border-gray-500/30 opacity-50'
-                    }`}
-                  >
-                    {editingStory?.id === story.id ? (
-                      <div className="space-y-3">
-                        <textarea
-                          defaultValue={story.caption || ''}
-                          id={`caption-${story.id}`}
-                          rows={3}
-                          className="w-full px-4 py-3 bg-black/30 border border-cyan-500/30 rounded-lg focus:outline-none focus:border-cyan-500 text-white resize-none"
-                        />
+                stories.map((story) => {
+                  const slotInfo = [
+                    { slot: 1, name: 'Работа в проекте', icon: '💼' },
+                    { slot: 2, name: 'О нас', icon: '👥' },
+                    { slot: 3, name: 'Медиа/Стафф', icon: '📸' }
+                  ].find(s => s.slot === story.slot_number);
+                  
+                  return (
+                    <div
+                      key={story.id}
+                      className="bg-white/5 rounded-xl p-4 border border-cyan-500/30 transition-all"
+                    >
+                      {/* Заголовок с иконкой слота */}
+                      <div className="flex items-center gap-2 mb-3 pb-3 border-b border-cyan-500/20">
+                        <span className="text-2xl">{slotInfo?.icon}</span>
+                        <div className="flex-1">
+                          <h4 className="font-bold text-cyan-400">{slotInfo?.name}</h4>
+                          <p className="text-xs text-gray-500">Слот {story.slot_number}</p>
+                        </div>
                         <div className="flex gap-2">
                           <button
-                            onClick={() => {
-                              const textarea = document.getElementById(`caption-${story.id}`) as HTMLTextAreaElement;
-                              handleUpdateStory(story.id, textarea.value);
-                            }}
-                            className="flex-1 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
+                            onClick={() => setEditingStory(story)}
+                            className="p-2 bg-blue-600/20 hover:bg-blue-600/40 rounded-lg transition-colors"
+                            title="Редактировать текст"
                           >
-                            <Save className="w-4 h-4" />
-                            Сохранить
+                            <Edit2 className="w-4 h-4 text-blue-400" />
                           </button>
                           <button
-                            onClick={() => setEditingStory(null)}
-                            className="flex-1 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg font-semibold transition-colors"
+                            onClick={() => handleDeleteStory(story.id)}
+                            className="p-2 bg-red-600/20 hover:bg-red-600/40 rounded-lg transition-colors"
+                            title="Удалить Story"
                           >
-                            Отмена
+                            <Trash2 className="w-4 h-4 text-red-400" />
                           </button>
                         </div>
                       </div>
-                    ) : (
-                      <>
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex-1">
-                            <p className="text-sm text-gray-400">ID: {story.id}</p>
-                            <p className="text-xs text-gray-500 mt-1">
-                              Порядок: {story.order_num} | {new Date(story.created_at).toLocaleDateString('ru')}
-                            </p>
-                          </div>
+
+                      {editingStory?.id === story.id ? (
+                        <div className="space-y-3">
+                          <textarea
+                            defaultValue={story.caption || ''}
+                            id={`caption-${story.id}`}
+                            rows={4}
+                            placeholder="Введите текст для Story..."
+                            className="w-full px-4 py-3 bg-black/30 border border-cyan-500/30 rounded-lg focus:outline-none focus:border-cyan-500 text-white resize-none"
+                          />
                           <div className="flex gap-2">
                             <button
-                              onClick={() => setEditingStory(story)}
-                              className="p-2 bg-blue-600/20 hover:bg-blue-600/40 rounded-lg transition-colors"
-                              title="Редактировать"
+                              onClick={() => {
+                                const textarea = document.getElementById(`caption-${story.id}`) as HTMLTextAreaElement;
+                                handleUpdateStory(story.id, textarea.value);
+                              }}
+                              className="flex-1 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
                             >
-                              <Edit2 className="w-4 h-4 text-blue-400" />
+                              <Save className="w-4 h-4" />
+                              Сохранить
                             </button>
                             <button
-                              onClick={() => handleDeleteStory(story.id)}
-                              className="p-2 bg-red-600/20 hover:bg-red-600/40 rounded-lg transition-colors"
-                              title="Удалить"
+                              onClick={() => setEditingStory(null)}
+                              className="flex-1 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg font-semibold transition-colors"
                             >
-                              <Trash2 className="w-4 h-4 text-red-400" />
+                              Отмена
                             </button>
                           </div>
                         </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {/* Фото Story */}
+                          {story.photo_url && (
+                            <div className="relative">
+                              <img 
+                                src={`https://euphoria.publicvm.com/api${story.photo_url}`}
+                                alt="Story"
+                                className="w-full h-64 object-cover rounded-lg border border-cyan-500/30"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                }}
+                              />
+                            </div>
+                          )}
 
-                        {story.caption && (
-                          <p className="text-gray-300 mb-3 text-sm">{story.caption}</p>
-                        )}
+                          {/* Текст Story */}
+                          {story.caption && (
+                            <div className="bg-black/30 rounded-lg p-3">
+                              <p className="text-gray-300 text-sm whitespace-pre-wrap">{story.caption}</p>
+                            </div>
+                          )}
 
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleToggleActive(story)}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                              story.is_active
-                                ? 'bg-green-600/20 text-green-400 hover:bg-green-600/30'
-                                : 'bg-gray-600/20 text-gray-400 hover:bg-gray-600/30'
-                            }`}
-                          >
-                            {story.is_active ? '✅ Активна' : '❌ Неактивна'}
-                          </button>
+                          {/* Дата создания */}
+                          <p className="text-xs text-gray-500">
+                            📅 Создано: {new Date(story.created_at).toLocaleDateString('ru', { 
+                              day: 'numeric', 
+                              month: 'long', 
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
                         </div>
-                      </>
-                    )}
-                  </div>
-                ))
+                      )}
+                    </div>
+                  );
+                })
               )}
             </div>
           </div>
