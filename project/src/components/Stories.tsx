@@ -1,54 +1,68 @@
 import { useState, useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
+import { getStories, Story as APIStory } from '../lib/api';
 
 interface Story {
   id: number;
+  slot_number: number;
   title: string;
-  content: {
-    subtitle?: string;
-    items?: string[];
-  };
   avatar: string;
-  image?: string;
+  photo_url?: string;
+  caption?: string;
 }
 
-const stories: Story[] = [
-  {
-    id: 1,
-    title: 'Работа в проекте',
-    avatar: '💼',
-    content: {
-      subtitle: undefined,
-      items: []
-    }
-  },
-  {
-    id: 2,
-    title: 'О НАС',
-    avatar: '👥',
-    content: {
-      subtitle: undefined,
-      items: []
-    }
-  },
-  {
-    id: 3,
-    title: 'МЕДИА STAFF',
-    avatar: '📸',
-    content: {
-      subtitle: undefined,
-      items: []
-    }
-  }
-];
+const SLOT_INFO = {
+  1: { name: 'Работа в проекте', icon: '💼' },
+  2: { name: 'О НАС', icon: '👥' },
+  3: { name: 'МЕДИА STAFF', icon: '📸' }
+};
 
 const STORY_DURATION = 15000;
 
 export default function Stories() {
+  const [stories, setStories] = useState<Story[]>([]);
   const [activeStoryIndex, setActiveStoryIndex] = useState<number | null>(null);
   const [progress, setProgress] = useState(0);
   const [touchStart, setTouchStart] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    loadStories();
+  }, []);
+
+  async function loadStories() {
+    try {
+      const apiStories = await getStories();
+      // Создаем 3 слота, заполняя данными из API
+      const slots: Story[] = [1, 2, 3].map(slotNum => {
+        const apiStory = apiStories.find(s => s.slot_number === slotNum);
+        const slotInfo = SLOT_INFO[slotNum as keyof typeof SLOT_INFO];
+        
+        return {
+          id: apiStory?.id || slotNum,
+          slot_number: slotNum,
+          title: slotInfo.name,
+          avatar: slotInfo.icon,
+          photo_url: apiStory?.photo_url,
+          caption: apiStory?.caption
+        };
+      });
+      setStories(slots);
+    } catch (error) {
+      console.error('Failed to load stories:', error);
+      // Показываем пустые слоты при ошибке
+      const emptySlots: Story[] = [1, 2, 3].map(slotNum => {
+        const slotInfo = SLOT_INFO[slotNum as keyof typeof SLOT_INFO];
+        return {
+          id: slotNum,
+          slot_number: slotNum,
+          title: slotInfo.name,
+          avatar: slotInfo.icon
+        };
+      });
+      setStories(emptySlots);
+    }
+  }
 
   const openStory = (index: number) => {
     setActiveStoryIndex(index);
@@ -139,7 +153,6 @@ export default function Stories() {
   }, [activeStoryIndex]);
 
   const currentStory = activeStoryIndex !== null ? stories[activeStoryIndex] : null;
-  const isFirstStory = currentStory?.id === 1;
 
   return (
     <>
@@ -197,41 +210,29 @@ export default function Stories() {
               <div
                 className={`w-full max-w-md mx-auto`}
               >
-                {currentStory.image && (
-                  <div
-                    className={`mb-4 rounded-2xl overflow-hidden border border-white/10 shadow-xl mx-auto`}
-                    style={{ maxWidth: '85vw' }}
-                  >
+                {currentStory.photo_url ? (
+                  <div className="mb-4 rounded-2xl overflow-hidden border border-white/10 shadow-xl mx-auto" style={{ maxWidth: '85vw' }}>
                     <img
-                      src={currentStory.image}
+                      src={`https://euphoria.publicvm.com/api${currentStory.photo_url}`}
                       alt={currentStory.title}
-                      className={`w-full object-cover ${isFirstStory ? 'h-auto' : 'h-full'}`}
+                      className="w-full h-auto object-cover"
                       loading="lazy"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                      }}
                     />
                   </div>
+                ) : (
+                  <div className="mb-4 rounded-2xl overflow-hidden border border-white/10 shadow-xl mx-auto bg-white/5 flex items-center justify-center" style={{ maxWidth: '85vw', height: '400px' }}>
+                    <p className="text-white/40 text-center px-4">Нет фото</p>
+                  </div>
                 )}
-                {currentStory.content.subtitle && (
-                  <h2 className="text-xl sm:text-2xl font-bold mb-3 text-center bg-gradient-to-r from-cyan-400 via-purple-400 to-fuchsia-400 bg-clip-text text-transparent px-2">
-                    {currentStory.content.subtitle}
-                  </h2>
-                )}
-                {currentStory.content.items && currentStory.content.items.length > 0 && (
-                  <div className="space-y-2 max-h-[70vh] overflow-y-auto pr-2 px-2 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
-                    {currentStory.content.items.map((item, index) => (
-                      <div
-                        key={index}
-                        className="relative bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20 shadow-lg"
-                      >
-                        <div className="flex items-start gap-2.5">
-                          <span className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500 to-purple-500 flex items-center justify-center text-xs font-bold text-white">
-                            {index + 1}
-                          </span>
-                          <p className="text-sm sm:text-base leading-relaxed text-white/95 font-normal break-words">
-                            {item}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                {currentStory.caption && (
+                  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20 shadow-lg">
+                    <p className="text-base leading-relaxed text-white/95 whitespace-pre-wrap">
+                      {currentStory.caption}
+                    </p>
                   </div>
                 )}
               </div>
