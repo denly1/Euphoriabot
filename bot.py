@@ -950,7 +950,7 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             if sub == "create_poster":
                 # init draft
                 ud = context.user_data
-                ud["poster_draft"] = {"step": "photo", "file_id": None, "caption": None, "ticket_url": None, "venue_map_file_id": None}
+                ud["poster_draft"] = {"step": "photo", "file_id": None, "caption": None, "ticket_url": None, "venue_map_file_id": None, "venue_map_url": None}
                 await query.edit_message_text(
                     "Шаг 1/5: пришлите фото афиши",
                     reply_markup=InlineKeyboardMarkup([
@@ -1092,7 +1092,8 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                             file_id=draft["file_id"],  # Сохраняем file_id для отображения в мини-приложении
                             caption=draft.get("caption") or "",
                             ticket_url=draft.get("ticket_url"),
-                            venue_map_file_id=draft.get("venue_map_file_id")
+                            venue_map_file_id=draft.get("venue_map_file_id"),
+                            venue_map_url=draft.get("venue_map_url")
                         )
                         logger.info("Poster saved to DB with ID: %s, file_id: %s", poster_id, draft["file_id"])
                     except Exception as e:
@@ -1107,7 +1108,8 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                     "photo_path": draft.get("photo_path"),  # Добавляем путь к фото
                     "caption": draft.get("caption") or "", 
                     "ticket_url": draft.get("ticket_url"),
-                    "venue_map_file_id": draft.get("venue_map_file_id")
+                    "venue_map_file_id": draft.get("venue_map_file_id"),
+                    "venue_map_url": draft.get("venue_map_url")
                 }
                 context.bot_data["poster"] = poster
                 
@@ -1123,10 +1125,14 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                     user_data["current_poster_index"] = len(all_posters) - 1
                 
                 context.user_data.pop("poster_draft", None)
-                # Опубликовать в чат админу одним сообщением (фото+текст+кнопка)
-                rm = None
+                # Опубликовать в чат админу одним сообщением (фото+текст+кнопки)
+                buttons = []
                 if poster.get("ticket_url"):
-                    rm = InlineKeyboardMarkup([[InlineKeyboardButton("Купить билет", url=poster["ticket_url"])]])
+                    buttons.append([InlineKeyboardButton("🎫 Купить билет", url=poster["ticket_url"])])
+                if draft.get("venue_map_url"):
+                    buttons.append([InlineKeyboardButton("🗺 Схема зала", url=draft["venue_map_url"])])
+                
+                rm = InlineKeyboardMarkup(buttons) if buttons else None
                 await context.bot.send_photo(
                     chat_id=query.message.chat_id, 
                     photo=poster["file_id"], 
@@ -1143,7 +1149,24 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 )
             
             elif sub == "skip_venue_map":
-                # Пропустить схему зала и перейти к предпросмотру
+                # Пропустить фото схемы зала и перейти к ссылке
+                draft = context.user_data.get("poster_draft")
+                if draft:
+                    draft["step"] = "venue_map_url"
+                    context.user_data["poster_draft"] = draft
+                    
+                    await query.edit_message_text(
+                        "Шаг 5/6: отправьте ссылку на схему зала для публикации в канале\n"
+                        "(или нажмите Пропустить)",
+                        reply_markup=InlineKeyboardMarkup([
+                            [InlineKeyboardButton("⏩ Пропустить", callback_data="admin:skip_venue_map_url")],
+                            [InlineKeyboardButton("❌ Отмена", callback_data="admin:cancel_poster")],
+                            [InlineKeyboardButton("◀️ Назад в панель", callback_data="admin:back_to_panel")],
+                        ]),
+                    )
+            
+            elif sub == "skip_venue_map_url":
+                # Пропустить ссылку на схему зала и перейти к предпросмотру
                 draft = context.user_data.get("poster_draft")
                 if draft:
                     draft["step"] = "preview"
@@ -1153,7 +1176,7 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                     url = draft.get("ticket_url")
                     rm = None
                     if url:
-                        rm = InlineKeyboardMarkup([[InlineKeyboardButton("Купить билет", url=url)]])
+                        rm = InlineKeyboardMarkup([[InlineKeyboardButton("🎫 Купить билет", url=url)]])
                     
                     await context.bot.send_photo(
                         chat_id=query.message.chat_id,
@@ -1162,7 +1185,7 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                         reply_markup=rm,
                     )
                     await query.edit_message_text(
-                        "Шаг 5/5: подтвердить публикацию?",
+                        "Шаг 6/6: подтвердить публикацию?",
                         reply_markup=InlineKeyboardMarkup([
                             [InlineKeyboardButton("✅ Подтвердить", callback_data="admin:confirm_poster")],
                             [InlineKeyboardButton("❌ Отмена", callback_data="admin:cancel_poster")],
@@ -2120,9 +2143,41 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
                 draft["step"] = "venue_map"
                 context.user_data["poster_draft"] = draft
                 await update.message.reply_text(
-                    "Шаг 4/5: пришлите фото схемы зала (или нажмите Пропустить)",
+                    "Шаг 4/6: пришлите фото схемы зала (или нажмите Пропустить)",
                     reply_markup=InlineKeyboardMarkup([
                         [InlineKeyboardButton("⏩ Пропустить", callback_data="admin:skip_venue_map")],
+                        [InlineKeyboardButton("❌ Отмена", callback_data="admin:cancel_poster")],
+                        [InlineKeyboardButton("◀️ Назад в панель", callback_data="admin:back_to_panel")],
+                    ]),
+                )
+                return
+            
+            if step == "venue_map_url":
+                url = update.message.text.strip()
+                draft["venue_map_url"] = url
+                draft["step"] = "preview"
+                context.user_data["poster_draft"] = draft
+                
+                # Предпросмотр: отправим афишу с подписью и кнопками
+                ticket_url = draft.get("ticket_url")
+                buttons = []
+                if ticket_url:
+                    buttons.append([InlineKeyboardButton("🎫 Купить билет", url=ticket_url)])
+                if url:
+                    buttons.append([InlineKeyboardButton("🗺 Схема зала", url=url)])
+                
+                rm = InlineKeyboardMarkup(buttons) if buttons else None
+                
+                await context.bot.send_photo(
+                    chat_id=update.effective_chat.id,
+                    photo=draft["file_id"],
+                    caption=draft.get("caption") or "",
+                    reply_markup=rm,
+                )
+                await update.message.reply_text(
+                    "✅ Ссылка на схему зала добавлена!\n\nШаг 6/6: подтвердить публикацию?",
+                    reply_markup=InlineKeyboardMarkup([
+                        [InlineKeyboardButton("✅ Подтвердить", callback_data="admin:confirm_poster")],
                         [InlineKeyboardButton("❌ Отмена", callback_data="admin:cancel_poster")],
                         [InlineKeyboardButton("◀️ Назад в панель", callback_data="admin:back_to_panel")],
                     ]),
@@ -2220,25 +2275,15 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         largest = update.message.photo[-1]
         venue_map_file_id = largest.file_id
         draft["venue_map_file_id"] = venue_map_file_id
-        draft["step"] = "preview"
+        draft["step"] = "venue_map_url"
         context.user_data["poster_draft"] = draft
         
-        # Предпросмотр: отправим афишу с подписью и кнопкой
-        url = draft.get("ticket_url")
-        rm = None
-        if url:
-            rm = InlineKeyboardMarkup([[InlineKeyboardButton("Купить билет", url=url)]])
-        
-        await context.bot.send_photo(
-            chat_id=update.effective_chat.id,
-            photo=draft["file_id"],
-            caption=draft.get("caption") or "",
-            reply_markup=rm,
-        )
         await update.message.reply_text(
-            "✅ Схема зала добавлена!\n\nШаг 5/5: подтвердить публикацию?",
+            "✅ Фото схемы зала добавлено!\n\n"
+            "Шаг 5/6: отправьте ссылку на схему зала для публикации в канале\n"
+            "(или нажмите Пропустить)",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("✅ Подтвердить", callback_data="admin:confirm_poster")],
+                [InlineKeyboardButton("⏩ Пропустить", callback_data="admin:skip_venue_map_url")],
                 [InlineKeyboardButton("❌ Отмена", callback_data="admin:cancel_poster")],
                 [InlineKeyboardButton("◀️ Назад в панель", callback_data="admin:back_to_panel")],
             ]),

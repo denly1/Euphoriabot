@@ -331,19 +331,21 @@ async def create_poster(
     caption: Optional[str] = None,
     ticket_url: Optional[str] = None,
     venue_map_file_id: Optional[str] = None,
+    venue_map_url: Optional[str] = None,
 ) -> int:
     """Создать новую афишу и вернуть её ID"""
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
             """
-            INSERT INTO posters (file_id, caption, ticket_url, venue_map_file_id, is_active)
-            VALUES ($1, $2, $3, $4, true)
+            INSERT INTO posters (file_id, caption, ticket_url, venue_map_file_id, venue_map_url, is_active)
+            VALUES ($1, $2, $3, $4, $5, true)
             RETURNING id
             """,
             file_id,
             caption,
             ticket_url,
             venue_map_file_id,
+            venue_map_url,
         )
         return row['id']
 
@@ -353,7 +355,7 @@ async def get_active_posters(pool: asyncpg.Pool) -> list[Dict[str, Any]]:
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             """
-            SELECT id, file_id, caption, ticket_url, venue_map_file_id, created_at, is_active
+            SELECT id, file_id, caption, ticket_url, venue_map_file_id, venue_map_url, created_at, is_active
             FROM posters
             WHERE is_active = true
             ORDER BY created_at DESC
@@ -367,7 +369,7 @@ async def get_latest_poster(pool: asyncpg.Pool) -> Optional[Dict[str, Any]]:
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
             """
-            SELECT id, file_id, caption, ticket_url, venue_map_file_id, created_at, is_active
+            SELECT id, file_id, caption, ticket_url, venue_map_file_id, venue_map_url, created_at, is_active
             FROM posters
             WHERE is_active = true
             ORDER BY created_at DESC
@@ -381,7 +383,7 @@ async def get_poster_by_id(pool: asyncpg.Pool, poster_id: int) -> Optional[Dict[
     """Получить афишу по ID"""
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
-            "SELECT id, file_id, caption, ticket_url, venue_map_file_id, created_at, is_active FROM posters WHERE id=$1",
+            "SELECT id, file_id, caption, ticket_url, venue_map_file_id, venue_map_url, created_at, is_active FROM posters WHERE id=$1",
             poster_id
         )
         return dict(row) if row else None
