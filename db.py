@@ -491,32 +491,53 @@ async def get_attendance_stats(pool: asyncpg.Pool, poster_id: int) -> dict:
 # Stories Functions
 # ----------------------
 
-async def create_story(pool: asyncpg.Pool, file_id: str, caption: Optional[str] = None, order_num: int = 0) -> int:
-    """Создать новую Story"""
+async def create_story(pool: asyncpg.Pool, file_id: str, slot_number: int, caption: Optional[str] = None) -> int:
+    """Создать новую Story в указанном слоте (1, 2, 3)"""
     async with pool.acquire() as conn:
+        # Деактивируем старую Story в этом слоте
+        await conn.execute(
+            "UPDATE stories SET is_active = false WHERE slot_number = $1 AND is_active = true",
+            slot_number
+        )
+        
+        # Создаем новую Story
         story_id = await conn.fetchval(
             """
-            INSERT INTO stories (file_id, caption, order_num, is_active)
+            INSERT INTO stories (file_id, caption, slot_number, is_active)
             VALUES ($1, $2, $3, true)
             RETURNING id
             """,
-            file_id, caption, order_num
+            file_id, caption, slot_number
         )
         return story_id
 
 
 async def get_active_stories(pool: asyncpg.Pool):
-    """Получить все активные Stories, отсортированные по порядку"""
+    """Получить все активные Stories, отсортированные по слотам"""
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             """
-            SELECT id, file_id, caption, order_num, created_at
+            SELECT id, file_id, caption, slot_number, created_at
             FROM stories
             WHERE is_active = true
-            ORDER BY order_num ASC, created_at DESC
+            ORDER BY slot_number ASC
             """
         )
         return [dict(row) for row in rows]
+
+
+async def get_story_by_slot(pool: asyncpg.Pool, slot_number: int):
+    """Получить активную Story из конкретного слота"""
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT id, file_id, caption, slot_number, created_at
+            FROM stories
+            WHERE slot_number = $1 AND is_active = true
+            """,
+            slot_number
+        )
+        return dict(row) if row else None
 
 
 async def delete_story(pool: asyncpg.Pool, story_id: int) -> None:
@@ -541,3 +562,23 @@ async def update_story_caption(pool: asyncpg.Pool, story_id: int, caption: str) 
             "UPDATE stories SET caption = $2 WHERE id = $1",
             story_id, caption
         )
+
+
+async def update_story(pool: asyncpg.Pool, story_id: int, file_id: Optional[str] = None, caption: Optional[str] = None) -> None:
+    """Обновить Story (фото и/или текст)"""
+    async with pool.acquire() as conn:
+        if file_id and caption is not None:
+            await conn.execute(
+                "UPDATE stories SET file_id = $2, caption = $3 WHERE id = $1",
+                story_id, file_id, caption
+            )
+        elif file_id:
+            await conn.execute(
+                "UPDATE stories SET file_id = $2 WHERE id = $1",
+                story_id, file_id
+            )
+        elif caption is not None:
+            await conn.execute(
+                "UPDATE stories SET caption = $2 WHERE id = $1",
+                story_id, caption
+            )
