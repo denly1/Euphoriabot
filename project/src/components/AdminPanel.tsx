@@ -212,41 +212,86 @@ export default function AdminPanel({ userId, onClose }: AdminPanelProps) {
             {/* Create Form */}
             {showCreateForm && (
               <div className="bg-white/5 rounded-xl p-6 space-y-4 border border-cyan-500/20">
+                {/* Выбор слота */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    File ID фото (из Telegram)
+                  <label className="block text-sm font-medium text-gray-300 mb-3">
+                    📍 Выберите слот для Story (1, 2 или 3)
+                  </label>
+                  <div className="flex gap-3">
+                    {[1, 2, 3].map((slot) => (
+                      <button
+                        key={slot}
+                        onClick={() => setSelectedSlot(slot)}
+                        className={`flex-1 py-3 rounded-lg font-semibold transition-all ${
+                          selectedSlot === slot
+                            ? 'bg-cyan-600 text-white'
+                            : 'bg-black/30 text-gray-400 hover:bg-black/50'
+                        }`}
+                      >
+                        Слот {slot}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Загрузка фото */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
+                    <ImageIcon className="w-4 h-4" />
+                    Загрузить фото из галереи
                   </label>
                   <input
-                    type="text"
-                    value={newStoryFileId}
-                    onChange={(e) => setNewStoryFileId(e.target.value)}
-                    placeholder="AgACAgIAAxkBAAI..."
-                    className="w-full px-4 py-3 bg-black/30 border border-cyan-500/30 rounded-lg focus:outline-none focus:border-cyan-500 text-white"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                    className="w-full px-4 py-3 bg-black/30 border border-cyan-500/30 rounded-lg text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-cyan-600 file:text-white hover:file:bg-cyan-700 file:cursor-pointer"
+                  />
+                  {previewUrl && (
+                    <div className="mt-3">
+                      <img 
+                        src={previewUrl} 
+                        alt="Preview" 
+                        className="w-full max-w-xs h-48 object-cover rounded-lg border border-cyan-500/30"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Текст */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
+                    <Type className="w-4 h-4" />
+                    Текст Story (опционально)
+                  </label>
+                  <textarea
+                    value={caption}
+                    onChange={(e) => setCaption(e.target.value)}
+                    placeholder="Добавьте текст к Story..."
+                    rows={4}
+                    className="w-full px-4 py-3 bg-black/30 border border-cyan-500/30 rounded-lg focus:outline-none focus:border-cyan-500 text-white resize-none"
                   />
                   <p className="text-xs text-gray-400 mt-1">
-                    💡 Отправьте фото боту и скопируйте file_id из логов
+                    💡 Можно создать Story только с фото, только с текстом, или с обоими
                   </p>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Подпись (опционально)
-                  </label>
-                  <textarea
-                    value={newStoryCaption}
-                    onChange={(e) => setNewStoryCaption(e.target.value)}
-                    placeholder="Текст для Story..."
-                    rows={3}
-                    className="w-full px-4 py-3 bg-black/30 border border-cyan-500/30 rounded-lg focus:outline-none focus:border-cyan-500 text-white resize-none"
-                  />
-                </div>
-
+                {/* Кнопка создания */}
                 <button
                   onClick={handleCreateStory}
-                  className="w-full py-3 bg-green-600 hover:bg-green-700 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
+                  disabled={uploading}
+                  className="w-full py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
                 >
-                  <Save className="w-5 h-5" />
-                  Создать
+                  {uploading ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Загрузка...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-5 h-5" />
+                      Создать в слоте {selectedSlot}
+                    </>
+                  )}
                 </button>
               </div>
             )}
