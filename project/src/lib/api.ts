@@ -13,11 +13,18 @@ export interface Poster {
 export interface Story {
   id: number;
   file_id: string;
+  photo_url?: string;
   caption?: string;
-  order_num: number;
+  slot_number: number;
   created_at: string;
   is_active: boolean;
 }
+
+export const STORY_SLOTS = {
+  1: { name: 'Работа в проекте', icon: '💼' },
+  2: { name: 'О нас', icon: '👥' },
+  3: { name: 'Медиа/Стафф', icon: '📸' }
+} as const;
 
 export async function getPosters(): Promise<Poster[]> {
   try {

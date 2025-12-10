@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Story } from '../lib/api';
+import { Story, STORY_SLOTS } from '../lib/api';
 import { checkAdmin, getStories, createStory, updateStory, deleteStory } from '../lib/api';
-import { X, Plus, Edit2, Trash2, Save, Image as ImageIcon, Type } from 'lucide-react';
+import { X, Plus, Edit2, Trash2, Save, Image as ImageIcon, Type, Briefcase, Users, Camera } from 'lucide-react';
 
 interface AdminPanelProps {
   userId: number;
@@ -215,22 +215,31 @@ export default function AdminPanel({ userId, onClose }: AdminPanelProps) {
                 {/* Выбор слота */}
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-3">
-                    📍 Выберите слот для Story (1, 2 или 3)
+                    📍 Выберите Story для заполнения
                   </label>
-                  <div className="flex gap-3">
-                    {[1, 2, 3].map((slot) => (
-                      <button
-                        key={slot}
-                        onClick={() => setSelectedSlot(slot)}
-                        className={`flex-1 py-3 rounded-lg font-semibold transition-all ${
-                          selectedSlot === slot
-                            ? 'bg-cyan-600 text-white'
-                            : 'bg-black/30 text-gray-400 hover:bg-black/50'
-                        }`}
-                      >
-                        Слот {slot}
-                      </button>
-                    ))}
+                  <div className="grid grid-cols-1 gap-3">
+                    {[1, 2, 3].map((slot) => {
+                      const slotInfo = STORY_SLOTS[slot as keyof typeof STORY_SLOTS];
+                      return (
+                        <button
+                          key={slot}
+                          onClick={() => setSelectedSlot(slot)}
+                          className={`p-4 rounded-lg font-semibold transition-all text-left ${
+                            selectedSlot === slot
+                              ? 'bg-gradient-to-r from-cyan-600 to-purple-600 text-white shadow-lg'
+                              : 'bg-black/30 text-gray-300 hover:bg-black/50 border border-cyan-500/20'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-2xl">{slotInfo.icon}</span>
+                            <div>
+                              <div className="font-bold">{slotInfo.name}</div>
+                              <div className="text-xs opacity-70">Слот {slot}</div>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
